@@ -85,7 +85,8 @@ def compute_segmentation_map(im: PIL.Image.Image,
     model.to(device)
 
     batch, channels, height, width = model.input
-    padding = model.user_metadata['hyper_params']['padding'] if 'padding' in model.user_metadata['hyper_params'] else (0, 0)
+    padding = model.user_metadata['hyper_params']['padding'] if 'padding' in model.user_metadata['hyper_params'] else (
+    0, 0)
     # expand padding to 4-tuple (left, right, top, bottom)
     if isinstance(padding, int):
         padding = (padding,) * 4
@@ -213,10 +214,12 @@ def vec_lines(heatmap: torch.Tensor,
     baselines = []
     for bl_type, idx in cls_map['baselines'].items():
         logger.debug(f'Vectorizing lines of type {bl_type}')
-        baselines.extend([(bl_type, x) for x in vectorize_lines(heatmap[(st_sep, end_sep, idx), :, :], text_direction=text_direction[:-3])])
+        baselines.extend([(bl_type, x) for x in
+                          vectorize_lines(heatmap[(st_sep, end_sep, idx), :, :], text_direction=text_direction[:-3])])
     logger.debug('Polygonizing lines')
 
-    im_feats = gaussian_filter(sobel(scal_im), 0.5)
+    # im_feats = gaussian_filter(sobel(scal_im), 0.5)
+    im_feats = sobel(scal_im)
 
     lines = []
     reg_pols = [geom.Polygon(x) for x in regions]
@@ -224,7 +227,7 @@ def vec_lines(heatmap: torch.Tensor,
         bl = baselines[bl_idx]
         mid_point = geom.LineString(bl[1]).interpolate(0.5, normalized=True)
 
-        suppl_obj = [x[1] for x in baselines[:bl_idx] + baselines[bl_idx+1:]]
+        suppl_obj = [x[1] for x in baselines[:bl_idx] + baselines[bl_idx + 1:]]
         for reg_idx, reg_pol in enumerate(reg_pols):
             if reg_pol.contains(mid_point):
                 suppl_obj.append(regions[reg_idx])
@@ -306,9 +309,9 @@ def segment(im: PIL.Image.Image,
         KrakenInputException: if the mask is not bitonal or does not match the
                               image size.
     """
-    if model is None:
-        logger.info('No segmentation model given. Loading default model.')
-        model = vgsl.TorchVGSLModel.load_model(pkg_resources.resource_filename(__name__, 'blla.mlmodel'))
+    # if model is None:
+    #     logger.info('No segmentation model given. Loading default model.')
+    #     model = vgsl.TorchVGSLModel.load_model(pkg_resources.resource_filename(__name__, 'blla.mlmodel'))
 
     if isinstance(model, vgsl.TorchVGSLModel):
         model = [model]
@@ -338,8 +341,8 @@ def segment(im: PIL.Image.Image,
             if rets['bounding_regions'] is not None and cls in rets['bounding_regions']:
                 suppl_obj.extend(regs)
         # convert back to net scale
-        suppl_obj = scale_regions(suppl_obj, 1/rets['scale'])
-        line_regs = scale_regions(line_regs, 1/rets['scale'])
+        suppl_obj = scale_regions(suppl_obj, 1 / rets['scale'])
+        line_regs = scale_regions(line_regs, 1 / rets['scale'])
         lines = vec_lines(**rets,
                           regions=line_regs,
                           reading_order_fn=reading_order_fn,
